@@ -59,16 +59,24 @@ For this walkthrough, you should have the following:
 
 4. Zip the Amazon Lambda functions <code>init\_lambda\_function.py</code>, <code>update\_lambda\_function.py</code> and <code>put\_metric\_lambda\_function.py</code> and upload it to an Amazon S3 bucket you created in step 1.
 
-<code>$ zip init\_lambda\_function.py init\_lambda\_function.py.zip</code>
+```
+$ zip init\_lambda\_function.py init\_lambda\_function.py.zip
+
 $ zip update\_lambda\_function.py update\_lambda\_function.py.zip
+
 $ zip put\_metric\_lambda\_function.py put\_metric\_lambda\_function.py.zip
+
 $ aws s3 cp init\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
+
 $ aws s3 cp update\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
-$ aws s3 cp put\_metric\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/</code>
+
+$ aws s3 cp put\_metric\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
+```
 
 5. Create the resources required for this blog post by deploying the AWS CloudFormation template and running the below command:
 
-<code> aws cloudformation create-stack \
+```
+aws cloudformation create-stack \
   
 --stack-name TgwRouteMonitoring \
 
@@ -79,7 +87,8 @@ ParameterKey=S3BucketWithDeploymentPackage,ParameterValue=<bucket-name-from-step
 
 --capabilities CAPABILITY\_IAM \
 
---region us-west-2 </code>
+--region us-west-2
+```
 
 You need to provide the following information, and you can change the parameters based on your specific needs:
 
@@ -112,12 +121,12 @@ The CloudFormation template will create the following resources:
 
 Once the stack is deployed, we need to populate the Amazon DynamoDB table with current state of AWS Transit Gateways and route tables. We do that by invoking the InitLambdaFunction manually from AWS CLI. For that we need the physical id of the function. We do that by describing the AWS CloudFormation template as shown below:
 
-<code>
+```
 $ aws cloudformation describe-stack-resources --stack-name TGWRTMON --region us-west-2 | grep InitLambdaFunction
 
 "PhysicalResourceId": "TGWRTMON-InitLambdaFunction-1E4ONARQ02SM3",
 "LogicalResourceId": "InitLambdaFunction"
-</code>
+```
 
 Use the value of PhysicalResourceId from the above output to invoke the function, as shown in the below command:
 
@@ -127,7 +136,7 @@ $ aws lambda invoke --function-name TGWRTMON-InitLambdaFunction-1E4ONARQ02SM3 re
 
 On successful invocation of the function, you should see the below output.
 
-<code>
+```
 {
 
 "ExecutedVersion": "$LATEST",
@@ -135,7 +144,7 @@ On successful invocation of the function, you should see the below output.
 "StatusCode": 200
 
 }
-</code>
+```
 
 At this point all the required components are in place to monitor the number of routes per attachment per AWS Transit Gateway. InitLambdaFunction has populated the Amazon DynamoDB table, UpdateLambdaFunction will be triggered as and when there is a AWS Transit Gateway route install or uninstall event and PutMetricLambda is calculating the routes per attachment every minute and pushing it to AWS CloudWatch.
 
