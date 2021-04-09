@@ -61,23 +61,35 @@ For this walkthrough, you should have the following:
 
 <code>
 $ zip init\_lambda\_function.py init\_lambda\_function.py.zip
+  
 $ zip update\_lambda\_function.py update\_lambda\_function.py.zip
+
 $ zip put\_metric\_lambda\_function.py put\_metric\_lambda\_function.py.zip
+
 $ aws s3 cp init\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
+  
 $ aws s3 cp update\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
+  
 $ aws s3 cp put\_metric\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
+  
 </code>
 
 5. Create the resources required for this blog post by deploying the AWS CloudFormation template and running the below command:
 
 <code>
 aws cloudformation create-stack \
+  
 --stack-name TgwRouteMonitoring \
+
 --template-body file://TGWRouteMonitoring.yml \
+
 --parameters ParameterKey=CloudWatchMetricNameSpace,ParameterValue=TGWRoutes
 ParameterKey=S3BucketWithDeploymentPackage,ParameterValue=<bucket-name-from-step-1>ParameterKey=S3BucketForTGWRoutesExport,ParameterValue=<bucket-name-from-step-2> ParameterKey=TGWRegion,ParameterValue=<region-of-tgw-you-want-to-monitor\
+
 --capabilities CAPABILITY\_IAM \
+
 --region us-west-2
+
 </code>
 
 You need to provide the following information, and you can change the parameters based on your specific needs:
