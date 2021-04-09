@@ -60,16 +60,11 @@ For this walkthrough, you should have the following:
 4. Zip the Amazon Lambda functions <code>init\_lambda\_function.py</code>, <code>update\_lambda\_function.py</code> and <code>put\_metric\_lambda\_function.py</code> and upload it to an Amazon S3 bucket you created in step 1.
 
 <code>$ zip init\_lambda\_function.py init\_lambda\_function.py.zip</code>
-  
-<code>$ zip update\_lambda\_function.py update\_lambda\_function.py.zip</code>
-
-<code>$ zip put\_metric\_lambda\_function.py put\_metric\_lambda\_function.py.zip</code>
-
-<code>$ aws s3 cp init\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/</code>
-  
-<code>$ aws s3 cp update\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/</code>
-  
-<code>$ aws s3 cp put\_metric\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/</code>
+$ zip update\_lambda\_function.py update\_lambda\_function.py.zip
+$ zip put\_metric\_lambda\_function.py put\_metric\_lambda\_function.py.zip
+$ aws s3 cp init\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
+$ aws s3 cp update\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
+$ aws s3 cp put\_metric\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/</code>
 
 5. Create the resources required for this blog post by deploying the AWS CloudFormation template and running the below command:
 
