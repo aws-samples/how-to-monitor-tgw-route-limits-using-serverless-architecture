@@ -40,7 +40,7 @@ For this walkthrough, you should have the following:
 •	AWS Transit Gateway Network Manager should be configured to monitor all AWS Transit Gateways in your account.
 
 ## Walk Through:
-1.	Create an Amazon S3 bucket in us-west-2 for staging the deployment packages.    aws s3api create-bucket --bucket <bucket-name> --region us-west-2 
+1.	Create an Amazon S3 bucket in us-west-2 for staging the deployment packages.    <code> aws s3api create-bucket --bucket <bucket-name> --region us-west-2 </code>
 2.	Create an Amazon S3 bucket in the region where the AWS Transit Gateway you are planning to monitor is present. For example below snippet created the bucket in us-east-1.                                    aws s3api create-bucket --bucket <bucket-name> --region us-east-1
 3.	Download and unzip the file containing AWS CloudFormation template and Amazon Lambda function code from here to a folder in your local workstation. You will need to run all of the subsequent commands from this folder.
 4.	Zip the Amazon Lambda functions init_lambda_function.py, update_lambda_function.py and put_metric_lambda_function.py and upload it to an Amazon S3 bucket you created in step 1.
