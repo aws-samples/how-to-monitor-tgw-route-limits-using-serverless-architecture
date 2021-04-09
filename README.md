@@ -59,25 +59,21 @@ For this walkthrough, you should have the following:
 
 4. Zip the Amazon Lambda functions <code>init\_lambda\_function.py</code>, <code>update\_lambda\_function.py</code> and <code>put\_metric\_lambda\_function.py</code> and upload it to an Amazon S3 bucket you created in step 1.
 
-<code>
-$ zip init\_lambda\_function.py init\_lambda\_function.py.zip
+<code>$ zip init\_lambda\_function.py init\_lambda\_function.py.zip</code>
   
-$ zip update\_lambda\_function.py update\_lambda\_function.py.zip
+<code>$ zip update\_lambda\_function.py update\_lambda\_function.py.zip</code>
 
-$ zip put\_metric\_lambda\_function.py put\_metric\_lambda\_function.py.zip
+<code>$ zip put\_metric\_lambda\_function.py put\_metric\_lambda\_function.py.zip</code>
 
-$ aws s3 cp init\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
+<code>$ aws s3 cp init\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/</code>
   
-$ aws s3 cp update\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
+<code>$ aws s3 cp update\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/</code>
   
-$ aws s3 cp put\_metric\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
-  
-</code>
+<code>$ aws s3 cp put\_metric\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/</code>
 
 5. Create the resources required for this blog post by deploying the AWS CloudFormation template and running the below command:
 
-<code>
-aws cloudformation create-stack \
+<code> aws cloudformation create-stack \
   
 --stack-name TgwRouteMonitoring \
 
@@ -88,9 +84,7 @@ ParameterKey=S3BucketWithDeploymentPackage,ParameterValue=<bucket-name-from-step
 
 --capabilities CAPABILITY\_IAM \
 
---region us-west-2
-
-</code>
+--region us-west-2 </code>
 
 You need to provide the following information, and you can change the parameters based on your specific needs:
 
