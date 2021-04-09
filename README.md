@@ -12,7 +12,7 @@ In this blog we walkthrough a serverless solution to monitor and get alerts on r
 
 **Solution Architecture** :
 
-![](RackMultipart20210409-4-zee0f8_html_d6f9ca7fac88964f.jpg)
+![](https://github.com/aws-samples/how-to-monitor-tgw-route-limits-using-serverless-architecture/blob/main/TGWRouteMonitoring.jpg)
 
 **Solution Overview** :
 
@@ -48,38 +48,35 @@ For this walkthrough, you should have the following:
 **Walk Through:**
 
 1. Create an Amazon S3 bucket in us-west-2 for staging the deployment packages. 
-<code> aws s3api create-bucket --bucket \&lt;bucket-name\&gt; --region us-west-2 </code>
+
+<code> aws s3api create-bucket --bucket <bucket-name> --region us-west-2 </code>
+
 2. Create an Amazon S3 bucket in the region where the AWS Transit Gateway you are planning to monitor is present. For example below snippet created the bucket in us-east-1. 
-<code>aws s3api create-bucket --bucket \&lt;bucket-name\&gt; --region us-east-1</code>
+
+<code>aws s3api create-bucket --bucket <bucket-name> --region us-east-1</code>
+
 3. Download and unzip the file containing AWS CloudFormation template and Amazon Lambda function code from [here](https://amazon.awsapps.com/workdocs/index.html#/document/cc362d3dda73f1698f312e94536abb19a1ab90c64c6cf95059742b79817948a0) to a folder in your local workstation. You will need to run all of the subsequent commands from this folder.
+
 4. Zip the Amazon Lambda functions <code>init\_lambda\_function.py</code>, <code>update\_lambda\_function.py</code> and <code>put\_metric\_lambda\_function.py</code> and upload it to an Amazon S3 bucket you created in step 1.
+
 <code>
 $ zip init\_lambda\_function.py init\_lambda\_function.py.zip
-
 $ zip update\_lambda\_function.py update\_lambda\_function.py.zip
-
 $ zip put\_metric\_lambda\_function.py put\_metric\_lambda\_function.py.zip
-$ aws s3 cp init\_lambda\_function.py.zip s3://\&lt;bucket-name-from-step-1\&gt;/
-
-$ aws s3 cp update\_lambda\_function.py.zip s3://\&lt;bucket-name-from-step-1\&gt;/
-
-$ aws s3 cp put\_metric\_lambda\_function.py.zip s3://\&lt;bucket-name-from-step-1\&gt;/
+$ aws s3 cp init\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
+$ aws s3 cp update\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
+$ aws s3 cp put\_metric\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
 </code>
 
 5. Create the resources required for this blog post by deploying the AWS CloudFormation template and running the below command:
+
 <code>
 aws cloudformation create-stack \
-
 --stack-name TgwRouteMonitoring \
-
 --template-body file://TGWRouteMonitoring.yml \
-
 --parameters ParameterKey=CloudWatchMetricNameSpace,ParameterValue=TGWRoutes
-
-ParameterKey=S3BucketWithDeploymentPackage,ParameterValue=\&lt;bucket-name-from-step-1\&gt;ParameterKey=S3BucketForTGWRoutesExport,ParameterValue=\&lt;bucket-name-from-step-2\&gt; ParameterKey=TGWRegion,ParameterValue=\&lt;region-of-tgw-you-want-to-monitor\
-
+ParameterKey=S3BucketWithDeploymentPackage,ParameterValue=<bucket-name-from-step-1>ParameterKey=S3BucketForTGWRoutesExport,ParameterValue=<bucket-name-from-step-2> ParameterKey=TGWRegion,ParameterValue=<region-of-tgw-you-want-to-monitor\
 --capabilities CAPABILITY\_IAM \
-
 --region us-west-2
 </code>
 
@@ -113,27 +110,32 @@ The CloudFormation template will create the following resources:
 - AWS CloudWatch schedule rule with required IAM permissions to invoke InitLambdaFunction every 60 minute. This function will export the routes in AWS Transit Gateway route tables to and Amazon S3 bucket and then parse the data and update the Amazon DynamDB table.
 
 Once the stack is deployed, we need to populate the Amazon DynamoDB table with current state of AWS Transit Gateways and route tables. We do that by invoking the InitLambdaFunction manually from AWS CLI. For that we need the physical id of the function. We do that by describing the AWS CloudFormation template as shown below:
+
 <code>
 $ aws cloudformation describe-stack-resources --stack-name TGWRTMON --region us-west-2 | grep InitLambdaFunction
 
-&quot;PhysicalResourceId&quot;: &quot;TGWRTMON-InitLambdaFunction-1E4ONARQ02SM3&quot;,
-
-&quot;LogicalResourceId&quot;: &quot;InitLambdaFunction&quot;
+"PhysicalResourceId": "TGWRTMON-InitLambdaFunction-1E4ONARQ02SM3",
+"LogicalResourceId": "InitLambdaFunction"
 </code>
+
 Use the value of PhysicalResourceId from the above output to invoke the function, as shown in the below command:
+
 <code>
 $ aws lambda invoke --function-name TGWRTMON-InitLambdaFunction-1E4ONARQ02SM3 response.json --region us-west-2
 </code>
+
 On successful invocation of the function, you should see the below output.
+
 <code>
 {
 
-&quot;ExecutedVersion&quot;: &quot;$LATEST&quot;,
+"ExecutedVersion": "$LATEST",
 
-&quot;StatusCode&quot;: 200
+"StatusCode": 200
 
 }
 </code>
+
 At this point all the required components are in place to monitor the number of routes per attachment per AWS Transit Gateway. InitLambdaFunction has populated the Amazon DynamoDB table, UpdateLambdaFunction will be triggered as and when there is a AWS Transit Gateway route install or uninstall event and PutMetricLambda is calculating the routes per attachment every minute and pushing it to AWS CloudWatch.
 
 To view the metrics in AWS Management Console, navigate to CloudWatch, then to Metrics and then click on the Custom Namespace created by the PutMetricLambdaFunction. Under the namespace will be the Metrics for each attachment depicted by its attachment-id and its corresponding dimensions (IN our OUT). Useful statistic for these metrics is &#39;Sample Count&#39; for period of 1 minute. You can use these metrics to create dashboards and alerts base on the limits of each attachments, by following the instructions in [AWS CloudWatch Documentation](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ConsoleAlarms.html).
