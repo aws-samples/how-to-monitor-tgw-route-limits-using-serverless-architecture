@@ -77,16 +77,11 @@ $ aws s3 cp put\_metric\_lambda\_function.py.zip s3://<bucket-name-from-step-1>/
 
 ```
 aws cloudformation create-stack \
-  
 --stack-name TgwRouteMonitoring \
-
 --template-body file://TGWRouteMonitoring.yml \
-
 --parameters ParameterKey=CloudWatchMetricNameSpace,ParameterValue=TGWRoutes
 ParameterKey=S3BucketWithDeploymentPackage,ParameterValue=<bucket-name-from-step-1>ParameterKey=S3BucketForTGWRoutesExport,ParameterValue=<bucket-name-from-step-2> ParameterKey=TGWRegion,ParameterValue=<region-of-tgw-you-want-to-monitor\
-
 --capabilities CAPABILITY\_IAM \
-
 --region us-west-2
 ```
 
