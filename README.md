@@ -11,6 +11,7 @@ In this blog we walkthrough a serverless solution to monitor and get alerts on r
 
 ## Solution Architecture:
 
+https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png
 
 ## Solution Overview:
 
