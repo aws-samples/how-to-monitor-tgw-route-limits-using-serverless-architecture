@@ -39,7 +39,7 @@ For this walkthrough, you should have the following:
 - [AWS Account](https://aws.amazon.com/premiumsupport/knowledge-center/create-and-activate-aws-account/)
 - AWS Command Line Interface (AWS CLI): You need [AWS CLI installed](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) and [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) on the workstation from where you are going to try the steps mentioned below.
 - Credentials configured in AWS CLI should have the required IAM permissions to spin up and modify the resources mentioned in this post.
-- Make sure that you deploy the solution to us-west-2 Region and your AWS CLI default Region is <code>us-west-2</code>. If <code>us-west-2</code> is not the default Region, reference the Region explicitly while executing AWS CLI commands using <code>--region us-west-2<code> switch.
+- Make sure that you deploy the solution to us-west-2 Region and your AWS CLI default Region is <code>us-west-2</code>. If <code>us-west-2</code> is not the default Region, reference the Region explicitly while executing AWS CLI commands using <code>--region us-west-2</code> switch.
 - Amazon S3 bucket in us-west-2 region for staging Lambda deploy packages
 - Amazon S3 buckets in the regions where you want to monitor the routes limits of AWS Transit Gateways.
 - One or more AWS Transit Gateways with attachments and route tables configured.
