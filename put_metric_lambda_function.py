@@ -10,7 +10,8 @@ tgwregion = os.environ['tgwregion']
 dynamodb = boto3.client('dynamodb', region_name='us-west-2')
 ec2 = boto3.client('ec2', region_name=tgwregion)
 cloudwatch = boto3.client('cloudwatch', region_name='us-west-2')
-ddbtable = os.environ['ddbtable']
+ddbtableout= os.environ['ddbtableout']
+ddbtablein= os.environ['ddbtablein']
 namespace = os.environ['NameSpace']
 
 #print('Loading function')
@@ -35,7 +36,7 @@ def lambda_handler(event, context):
         TGWTotal = TransitGatewayId+"-Total"
 # Scan the DDB table to count routes advertised by the attachment to the TGW
         In = dynamodb.scan(
-            TableName=ddbtable,
+            TableName=ddbtablein,
             FilterExpression='#75c00 = :75c00',
             ExpressionAttributeNames={'#75c00':'tgwAttachmentId'},
             ExpressionAttributeValues={':75c00': {'S':TransitGatewayAttachmentId}}
@@ -61,10 +62,10 @@ def lambda_handler(event, context):
 #        print (putMetricIn)
 # Scan the DDB table to count routes propagated to the attachment by TGW
         Out = dynamodb.scan(
-            TableName=ddbtable,
-            FilterExpression='#14260 <> :14260 And #14261 = :14261 And #14262 = :14262',
-            ExpressionAttributeNames={"#14260":"tgwAttachmentId","#14261":"transitGatewayRouteTableId","#14262":"routeState"},
-            ExpressionAttributeValues={":14260": {"S":TransitGatewayAttachmentId},":14261": {"S":TransitGatewayRouteTableId},":14262": {"S":"active"}}
+            TableName=ddbtableout,
+            FilterExpression = "#14260 = :14260 And #14261 <> :14261 And #14262 = :14262",
+            ExpressionAttributeNames = {"#14260":"transitGatewayRouteTableId","#14261":"tgwAttachmentId","#14262":"routeState"},
+            ExpressionAttributeValues = {":14260": {"S":TransitGatewayRouteTableId},":14261": {"S":TransitGatewayAttachmentId},":14262": {"S":"active"}}
         )
 #        print (Out['Count'])
 # Push the outgoing route counts to CloudWatch custom metric
@@ -87,10 +88,10 @@ def lambda_handler(event, context):
 #        print(putMetricOut)
 # Scan the DDB table to count total routes in TGW
         Total = dynamodb.scan(
-            TableName=ddbtable,
-            FilterExpression='#75c00 = :75c00',
-            ExpressionAttributeNames={'#75c00':'transitGatewayId'},
-            ExpressionAttributeValues={':75c00': {'S':TransitGatewayId}}
+            TableName=ddbtableout,
+            FilterExpression = "#fb3f0 = :fb3f0",
+            ExpressionAttributeNames = {"#fb3f0":"transitGatewayId"},
+            ExpressionAttributeValues = {":fb3f0": {"S":TransitGatewayId}}
         )
 # Push the total route counts to CloudWatch custom metric    
         putMetricTotal = cloudwatch.put_metric_data(

@@ -8,12 +8,13 @@ import os
 # Initialize boto3 clients used in this function
 tgwregion = os.environ['tgwregion']
 dynamodb = boto3.client('dynamodb', region_name='us-west-2')
-ddbtable = os.environ['ddbtable']
+ddbtableout= os.environ['ddbtableout']
+ddbtablein= os.environ['ddbtablein']
 
 #print('Loading function')
 
 def lambda_handler(event, context):
-#    print(event)
+    print(event)
 # Extracting Prefix and RouteTableId from the event when an route is un-installed from TGW route tables.
     if (event['detail']['changeType'] == 'TGW-ROUTE-UNINSTALLED'):
         i = 0
@@ -29,8 +30,18 @@ def lambda_handler(event, context):
                 print(routeTable_split[1])
                 fromRouteTable = routeTable_split[1]
                 j = j + 1
+                responseDetermine = dynamodb.query(
+                    TableName=ddbtableout,
+                    KeyConditionExpression = "#85650 = :85650 And #85651 = :85651",
+                    ExpressionAttributeNames = {"#85650":"destinationCidrBlock","#85651":"transitGatewayRouteTableId"},
+                    ExpressionAttributeValues = {":85650": {"S":deleteRoute},":85651": {"S":fromRouteTable}}
+                    )
+                print(responseDetermine)    
+                resourceIdIn = responseDetermine['Items'][0]['resourceId']['S']
+                deleteRouteIn = responseDetermine['Items'][0]['destinationCidrBlock']['S']
+
 # Delete the prefix from the DDB table
-                response = dynamodb.delete_item(
+                responseOut = dynamodb.delete_item(
                     Key={
                         'destinationCidrBlock': {
                             'S': deleteRoute,
@@ -39,9 +50,22 @@ def lambda_handler(event, context):
                             'S': fromRouteTable,
                         },
                     },
-                    TableName=ddbtable,
+                    TableName=ddbtableout,
                 )
-#                print(response)
+#                print(responseOut)
+                
+                responseIn = dynamodb.delete_item(
+                    Key={
+                        'resourceId': {
+                            'S': resourceIdIn,
+                        },
+                        'destinationCidrBlock': {
+                            'S': deleteRouteIn,
+                        },
+                    },
+                    TableName=ddbtablein,
+                )
+#                print(responseIn)
             i = i + 1
 # If its not route un-install event the extract all the relevsnt fields to add the route in DDB table
     else:
@@ -104,7 +128,7 @@ def lambda_handler(event, context):
                             protocol = 'static'
 #                            print(protocol)
 # Add the record to DDB table
-                response = dynamodb.put_item(
+                responseout = dynamodb.put_item(
                     Item={
                         'account': {
                             'S': account,
@@ -135,8 +159,40 @@ def lambda_handler(event, context):
                         },
                     },
                     ReturnConsumedCapacity='TOTAL',
-                    TableName=ddbtable,
+                    TableName=ddbtableout,
                 )
-#                print(response)
+#                print(responseout)
+                responsein = dynamodb.put_item(
+                    Item={
+                        'account': {
+                            'S': account,
+                        },
+                        'transitGatewayId': {
+                            'S': transitGatewayId,
+                        },
+                        'destinationCidrBlock': {
+                            'S': destinationCidrBlock,
+                        },
+                        'routeType': {
+                            'S': routeType,
+                        },
+                        'routeState': {
+                            'S': routeState,
+                        },
+                        'tgwAttachmentId': {
+                            'S': tgwAttachmentId,
+                        },
+                        'resourceId': {
+                            'S': resourceId,
+                        },
+                        'attachmentType': {
+                            'S': attachmentType,
+                        },
+                    },
+                    ReturnConsumedCapacity='TOTAL',
+                    TableName=ddbtablein,
+                )
+#                print(responsein)
+
                 j = j + 1
             i = i + 1

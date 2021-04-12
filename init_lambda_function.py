@@ -13,7 +13,9 @@ ec2 = boto3.client('ec2', region_name=tgwregion)
 s3 = boto3.client('s3')
 dynamodb = boto3.client('dynamodb', region_name='us-west-2')
 s3bucket= os.environ['s3bucket']
-ddbtable= os.environ['ddbtable']
+ddbtableout= os.environ['ddbtableout']
+ddbtablein= os.environ['ddbtablein']
+
 
 def lambda_handler(event, context):
     
@@ -104,7 +106,7 @@ def lambda_handler(event, context):
                             },
                         },
                         ReturnConsumedCapacity='TOTAL',
-                        TableName=ddbtable,
+                        TableName=ddbtableout,
                     )
                     print (ddbputblackhole)
     # Extracting columns for DDB table for routes other than status of blackhole
@@ -132,7 +134,7 @@ def lambda_handler(event, context):
                     print (transitGatewayId)
                     protocol = ""
     # Adding items to DDB table for routed other than blackholed routes
-                    ddbputnonblackhole = dynamodb.put_item(
+                    ddbputnonblackholeout = dynamodb.put_item(
                         Item={
                             'account': {
                                 'S': account,
@@ -163,7 +165,39 @@ def lambda_handler(event, context):
                             },
                         },
                         ReturnConsumedCapacity='TOTAL',
-                        TableName=ddbtable,
+                        TableName=ddbtableout,
+                    )
+                    print (ddbputnonblackholeout)
+                    
+                    ddbputnonblackholein = dynamodb.put_item(
+                        Item={
+                            'account': {
+                                'S': account,
+                            },
+                            'transitGatewayId': {
+                                'S': transitGatewayId,
+                            },
+                            'destinationCidrBlock': {
+                                'S': destinationCidrBlock,
+                            },
+                            'routeType': {
+                                'S': routeType,
+                            },
+                            'routeState': {
+                                'S': routeState,
+                            },
+                            'tgwAttachmentId': {
+                                'S': tgwAttachmentId,
+                            },
+                            'resourceId': {
+                                'S': resourceId,
+                            },
+                            'attachmentType': {
+                                'S': attachmentType,
+                            },
+                        },
+                        ReturnConsumedCapacity='TOTAL',
+                        TableName=ddbtablein,
                     )
                     print (ddbputnonblackhole)
 

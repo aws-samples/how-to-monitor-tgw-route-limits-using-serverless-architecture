@@ -1,0 +1,484 @@
+AWSTemplateFormatVersion:  2010-09-09
+
+Description: 'This template the serverless components'
+
+Parameters: 
+  S3BucketWithDeploymentPackage: 
+    Default: vijaym-tgw-route-monitoring-deployment
+    Description: S3 Bucket name with deployment package in it
+    Type: String
+
+  CloudWatchMetricNameSpace: 
+    Default: TGWRoutes
+    Description: Name space to be used to track TGW route metrics
+    Type: String
+
+  TGWRegion:
+    Default: us-east-1
+    Description: Region code the the TGWs in question
+    Type: String
+
+  S3BucketForTGWRoutesExport:
+    Default: vijaym-cur
+    Description: Region code the the TGWs in question
+    Type: String
+    
+Resources:
+
+  RoutesDDBTableOut:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "destinationCidrBlock"
+          AttributeType: "S"
+        -
+          AttributeName: "transitGatewayRouteTableId"
+          AttributeType: "S"
+
+      KeySchema:
+        -
+          AttributeName: "destinationCidrBlock"
+          KeyType: "HASH"
+        -
+          AttributeName: "transitGatewayRouteTableId"
+          KeyType: "RANGE"
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  WriteCapacityScalableTargetOut:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: 15
+      MinCapacity: 5
+      ResourceId: !Join
+        - /
+        - - table
+          - !Ref RoutesDDBTable
+      RoleARN: !GetAtt ScalingRole.Arn
+      ScalableDimension: dynamodb:table:WriteCapacityUnits
+      ServiceNamespace: dynamodb
+
+  RoutesDDBTableIn:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "destinationCidrBlock"
+          AttributeType: "S"
+        -
+          AttributeName: "resourceId"
+          AttributeType: "S"
+
+      KeySchema:
+        -
+          AttributeName: "destinationCidrBlock"
+          KeyType: "HASH"
+        -
+          AttributeName: "resourceId"
+          KeyType: "RANGE"
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  WriteCapacityScalableTargetIn:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: 15
+      MinCapacity: 5
+      ResourceId: !Join
+        - /
+        - - table
+          - !Ref RoutesDDBTableIn
+      RoleARN: !GetAtt ScalingRole.Arn
+      ScalableDimension: dynamodb:table:WriteCapacityUnits
+      ServiceNamespace: dynamodb
+
+
+  ScalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - application-autoscaling.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        -
+          PolicyName: "root"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "dynamodb:DescribeTable"
+                  - "dynamodb:UpdateTable"
+                  - "cloudwatch:PutMetricAlarm"
+                  - "cloudwatch:DescribeAlarms"
+                  - "cloudwatch:GetMetricStatistics"
+                  - "cloudwatch:SetAlarmState"
+                  - "cloudwatch:DeleteAlarms"
+                Resource: "*"
+
+  WriteScalingPolicyOut:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: WriteAutoScalingPolicyOut
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref WriteCapacityScalableTargetOut
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 50.0
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBWriteCapacityUtilization
+
+  WriteScalingPolicyIn:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: WriteAutoScalingPolicyIn
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref WriteCapacityScalableTargetIn
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 50.0
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBWriteCapacityUtilization
+
+  InitLambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: lambdaBasicExecutionBotBlock
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*LambdaFunction*
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeTransitGatewayAttachments 
+                  - ec2:DescribeTransitGatewayRouteTables
+                  - ec2:DescribeTransitGateways
+                  - ec2:ExportTransitGatewayRoutes
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem 
+                Resource: !Join
+                            - ''
+                            - - 'arn:aws:dynamodb:'
+                              - Ref: AWS::Region
+                              - ':'
+                              - Ref: AWS::AccountId
+                              - ':table/'
+                              - Ref: *
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: !Sub
+                  - arn:aws:s3:::${Bucket}/*
+                  - { Bucket: !Ref S3BucketForTGWRoutesExport}
+
+  UpdateLambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: lambdaBasicExecutionBotBlock
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*LambdaFunction*
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                Resource: !Join
+                            - ''
+                            - - 'arn:aws:dynamodb:'
+                              - Ref: AWS::Region
+                              - ':'
+                              - Ref: AWS::AccountId
+                              - ':table/'
+                              - Ref: *
+  PutMetricLambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: lambdaBasicExecutionBotBlock
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*LambdaFunction*
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeTransitGatewayAttachments 
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - dynamodb:Scan
+                Resource: !Join
+                            - ''
+                            - - 'arn:aws:dynamodb:'
+                              - Ref: AWS::Region
+                              - ':'
+                              - Ref: AWS::AccountId
+                              - ':table/'
+                              - Ref: *
+              - Effect: Allow
+                Action: 
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: !Ref CloudWatchMetricNameSpace
+
+
+  InitLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: init_lambda_function.lambda_handler
+      Role: !GetAtt InitLambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref S3BucketWithDeploymentPackage
+        S3Key: init_lambda_function.py.zip    
+      Runtime: python3.8
+      Timeout: 60
+      Environment:
+        Variables:
+          s3bucket: !Ref S3BucketForTGWRoutesExport
+          ddbtableout: !Ref RoutesDDBTableOut
+          ddbtablein: !Ref RoutesDDBTableIn
+          tgwregion: !Ref TGWRegion
+
+  UpdateLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: update_lambda_function.lambda_handler
+      Role: !GetAtt UpdateLambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref S3BucketWithDeploymentPackage
+        S3Key: update_lambda_function.py.zip    
+      Runtime: python3.8
+      Timeout: 60
+      Environment:
+        Variables:
+          ddbtableout: !Ref RoutesDDBTableOut
+          ddbtablein: !Ref RoutesDDBTableIn
+          tgwregion: !Ref TGWRegion
+
+
+  PutMetricLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: put_metric_lambda_function.lambda_handler
+      Role: !GetAtt PutMetricLambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref S3BucketWithDeploymentPackage
+        S3Key: put_metric_lambda_function.py.zip    
+      Runtime: python3.8
+      Timeout: 60
+      Environment:
+        Variables:
+          NameSpace: !Ref CloudWatchMetricNameSpace
+          ddbtableout: !Ref RoutesDDBTableOut
+          ddbtablein: !Ref RoutesDDBTableIn
+          tgwregion: !Ref TGWRegion
+
+  RouteInstallEventRule: 
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: "Route Install EventRule"
+      EventPattern: 
+        source: 
+          - "aws.networkmanager"
+        detail-type: 
+          - "Network Manager Routing Update"
+        detail: 
+          changeType: 
+            - "TGW-ROUTE-INSTALLED"
+      State: "ENABLED"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "UpdateLambdaFunction"
+              - "Arn"
+          Id: "UpdateLambdaFunction"
+  
+  RouteInstallPermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "UpdateLambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "RouteInstallEventRule"
+          - "Arn"
+  
+  RouteUnInstallEventRule: 
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: "Route UnInstall EventRule"
+      EventPattern: 
+        source: 
+          - "aws.networkmanager"
+        detail-type: 
+          - "Network Manager Routing Update"
+        detail: 
+          changeType: 
+            - "TGW-ROUTE-UNINSTALLED"
+      State: "ENABLED"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "UpdateLambdaFunction"
+              - "Arn"
+          Id: "UpdateLambdaFunction"
+  
+  RouteUnInstallPermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "UpdateLambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "RouteUnInstallEventRule"
+          - "Arn"
+  
+  PutMetricScheduledRule: 
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: "Put Metric ScheduledRule"
+      ScheduleExpression: "rate(1 minute)"
+      State: "ENABLED"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "PutMetricLambdaFunction"
+              - "Arn"
+          Id: "PutMetricLambdaFunctionV1"
+  
+  PutMetricPermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: !Ref "PutMetricLambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "PutMetricScheduledRule"
+          - "Arn"
+  
+  InitScheduledRule: 
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: "Init script ScheduledRule"
+      ScheduleExpression: "rate(60 minutes)"
+      State: "ENABLED"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "InitLambdaFunction"
+              - "Arn"
+          Id: "InitLambdaFunctionV1"
+
+  InitPermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: !Ref "InitLambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "InitScheduledRule"
+          - "Arn"
+  
+Outputs:
+  RoutesDDBTable:
+    Description: 'DynamoDB table to keep track of routes in the TGW'
+    Value: !GetAtt RoutesDDBTable.Arn
+  InitLambdaExecutionRole:
+    Description: 'Init Lambda execution role'
+    Value: !GetAtt InitLambdaExecutionRole.Arn
+  UpdateLambdaExecutionRole:
+    Description: 'Update Lambda execution role'
+    Value: !GetAtt UpdateLambdaExecutionRole.Arn
+  PutMetricLambdaExecutionRole:
+    Description: 'PutMetric Lambda execution role'
+    Value: !GetAtt PutMetricLambdaExecutionRole.Arn
+  InitLambdaFunction:
+    Description: 'Init Lambda Function to initialize DDB table with existing routes in TGWs'
+    Value: !GetAtt InitLambdaFunction.Arn
+  UpdateLambdaFunction:
+    Description: 'Update Lambda Function to detect changes in route tables and update the DDB table accordingly'
+    Value: !GetAtt UpdateLambdaFunction.Arn
+  PutMetricLambdaFunction:
+    Description: 'Put Metric Lambda Function to push custom metrics of number of routes/attachment to CloudWatch'
+    Value: !GetAtt PutMetricLambdaFunction.Arn
+
