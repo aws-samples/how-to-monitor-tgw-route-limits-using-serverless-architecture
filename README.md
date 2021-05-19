@@ -125,13 +125,13 @@ At this point, all the required components are in place to monitor the number of
 
 To view the metrics in the AWS Management Console, navigate to CloudWatch, then go to Metrics and click on the Custom Namespace created by the PutMetricLambdaFunction.
 
-<img class="aligncenter size-full wp-image-7397" src="https://d2908q01vomqb2.cloudfront.net/5b384ce32d8cdef02bc3a139d4cac0a22bb029e8/2021/05/19/Cloudwatch1.png" alt="" width="3310" height="1438" />
+![](/Cloudwatch1.png)
 
 &nbsp;
 
 Under namespace, you find the Metrics for each attachment depicted by its attachment-id, click on the desired Metric.
 
-<img class="aligncenter size-full wp-image-7398" src="https://d2908q01vomqb2.cloudfront.net/5b384ce32d8cdef02bc3a139d4cac0a22bb029e8/2021/05/19/Cloudwatch2.png" alt="" width="3310" height="1410" />
+![](/Cloudwatch2.png)
 
 &nbsp;
 
@@ -139,13 +139,13 @@ Under each Metric are its corresponding dimensions (IN or OUT). Click on the des
 
 <em>NOTE: For VPC and Transit Gateway Peering attachments, ‘IN’ and ‘OUT’ means the number of prefixes accessible in each direction. For example for VPC attachments, IN indicates the number of prefixes in the VPC reachable from TGW perspective. Dimension ‘OUT’ for VPC attachments indicates how many prefixes are reachable from the VPC via TGW.</em>
 
-<img class="aligncenter size-full wp-image-7399" src="https://d2908q01vomqb2.cloudfront.net/5b384ce32d8cdef02bc3a139d4cac0a22bb029e8/2021/05/19/Cloudwatch3.png" alt="" width="3280" height="1256" />
+![](/Cloudwatch3.png)
 
 <em> </em>
 
 Useful statistic for these metrics is ‘custom percentile, p100’ for a period of 1 minute.
 
-<img class="aligncenter size-full wp-image-7400" src="https://d2908q01vomqb2.cloudfront.net/5b384ce32d8cdef02bc3a139d4cac0a22bb029e8/2021/05/19/Cloudwatch4.png" alt="" width="2764" height="520" />
+![](/Cloudwatch4.png)
 
 You use these metrics to create dashboards and alerts based on the quotas for each individual attachment, by following the instructions in <a href="https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ConsoleAlarms.html">CloudWatch documentation</a>.
 
