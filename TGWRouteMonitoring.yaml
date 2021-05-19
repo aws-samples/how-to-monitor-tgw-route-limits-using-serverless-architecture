@@ -1,17 +1,17 @@
 AWSTemplateFormatVersion:  2010-09-09
 
-Description: 'This template the serverless components'
+Description: 'This template deploys the serverless components to monitor TGW route limits'
 
 Parameters: 
   S3BucketWithDeploymentPackage: 
-    Default: vijaym-tgw-route-monitoring-deployment
     Description: S3 Bucket name with deployment package in it
     Type: String
+    Default: ""
 
   CloudWatchMetricNameSpace: 
-    Default: TGWRoutes
     Description: Name space to be used to track TGW route metrics
     Type: String
+    Default: ""
 
   TGWRegion:
     Default: us-east-1
@@ -19,9 +19,9 @@ Parameters:
     Type: String
 
   S3BucketForTGWRoutesExport:
-    Default: vijaym-cur
     Description: Region code the the TGWs in question
     Type: String
+    Default: ""
     
 Resources:
 
@@ -55,7 +55,7 @@ Resources:
       ResourceId: !Join
         - /
         - - table
-          - !Ref RoutesDDBTable
+          - !Ref RoutesDDBTableOut
       RoleARN: !GetAtt ScalingRole.Arn
       ScalableDimension: dynamodb:table:WriteCapacityUnits
       ServiceNamespace: dynamodb
@@ -195,8 +195,7 @@ Resources:
                               - Ref: AWS::Region
                               - ':'
                               - Ref: AWS::AccountId
-                              - ':table/'
-                              - Ref: *
+                              - ':table/*'
               - Effect: Allow
                 Action:
                   - s3:PutObject
@@ -241,8 +240,7 @@ Resources:
                               - Ref: AWS::Region
                               - ':'
                               - Ref: AWS::AccountId
-                              - ':table/'
-                              - Ref: *
+                              - ':table/*'
   PutMetricLambdaExecutionRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -281,8 +279,7 @@ Resources:
                               - Ref: AWS::Region
                               - ':'
                               - Ref: AWS::AccountId
-                              - ':table/'
-                              - Ref: *
+                              - ':table/*'
               - Effect: Allow
                 Action: 
                   - cloudwatch:PutMetricData
@@ -460,9 +457,12 @@ Resources:
           - "Arn"
   
 Outputs:
-  RoutesDDBTable:
-    Description: 'DynamoDB table to keep track of routes in the TGW'
-    Value: !GetAtt RoutesDDBTable.Arn
+  RoutesDDBTableIn:
+    Description: 'DynamoDB table to keep track of routes advertised to the TGW'
+    Value: !GetAtt RoutesDDBTableIn.Arn
+  RoutesDDBTableOut:
+    Description: 'DynamoDB table to keep track of routes advertised from the TGW'
+    Value: !GetAtt RoutesDDBTableOut.Arn
   InitLambdaExecutionRole:
     Description: 'Init Lambda execution role'
     Value: !GetAtt InitLambdaExecutionRole.Arn

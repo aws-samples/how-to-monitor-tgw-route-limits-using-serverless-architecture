@@ -1,5 +1,5 @@
-# This function populates the DDB with existing TGW routes. This should be executed before deploying the route
-# monitoring solution. It can also ran anythime thre is discrapancy betweent he DDB table and actual routes in TGW.
+# This function populates the DDB tables with existing TGW routes. This should be executed before deploying the route
+# monitoring solution. It can also ran anythime there is discrapancy between the DDB tables and actual routes in TGW.
 
 from __future__ import print_function
 import boto3
@@ -43,162 +43,165 @@ def lambda_handler(event, context):
         with open('/tmp/rt-json.json') as f:
             records = json.load(f)
             routeRecords = records['routes']
-            for record in routeRecords:
+            if not routeRecords:
+                print ("No Routes in Route Table "+response['TransitGatewayRouteTables'][i]['TransitGatewayRouteTableId'])
+            else:
+                for record in routeRecords:
     # Blackholed routes need to be proccessed differently when compared with other routes.
-                if record['state'] == 'blackhole':
-                    destinationCidrBlock = record['destinationCidrBlock']
-                    attachmentType = ""
-                    resourceId = ""
-                    routeState = record['state']
-                    routeType = record['type']
-#                    protocol = ""
-                    tgwAttachmentId = ""
-                    transitGatewayRouteTableId = response['TransitGatewayRouteTables'][i]['TransitGatewayRouteTableId']
-                    blackholeTgw = ec2.describe_transit_gateway_route_tables(
-                        TransitGatewayRouteTableIds=[
-                            transitGatewayRouteTableId,
-                        ]
-                    )
-                    transitGatewayId = blackholeTgw['TransitGatewayRouteTables'][0]['TransitGatewayId']
-                    blackholeAccount = ec2.describe_transit_gateways(
-                        TransitGatewayIds=[
-                            transitGatewayId,
-                        ]
-                    )
-                    account = blackholeAccount['TransitGateways'][0]['OwnerId']
-                    print(destinationCidrBlock)
-                    print(attachmentType)
-                    print(resourceId)
-                    print(routeState)
-                    print(routeType)
-                    print(transitGatewayRouteTableId)
-                    print(transitGatewayId)
-                    print(account)
-    # Adding items to DDB table for blackholed routes
-                    ddbputblackhole = dynamodb.put_item(
-                        Item={
-                            'account': {
-                                'S': account,
+                    if record['state'] == 'blackhole':
+                        destinationCidrBlock = record['destinationCidrBlock']
+                        attachmentType = ""
+                        resourceId = ""
+                        routeState = record['state']
+                        routeType = record['type']
+#                       protocol = ""
+                        tgwAttachmentId = ""
+                        transitGatewayRouteTableId = response['TransitGatewayRouteTables'][i]['TransitGatewayRouteTableId']
+                        blackholeTgw = ec2.describe_transit_gateway_route_tables(
+                            TransitGatewayRouteTableIds=[
+                                transitGatewayRouteTableId,
+                            ]
+                        )
+                        transitGatewayId = blackholeTgw['TransitGatewayRouteTables'][0]['TransitGatewayId']
+                        blackholeAccount = ec2.describe_transit_gateways(
+                            TransitGatewayIds=[
+                                transitGatewayId,
+                            ]
+                        )
+                        account = blackholeAccount['TransitGateways'][0]['OwnerId']
+                        print(destinationCidrBlock)
+                        print(attachmentType)
+                        print(resourceId)
+                        print(routeState)
+                        print(routeType)
+                        print(transitGatewayRouteTableId)
+                        print(transitGatewayId)
+                        print(account)
+    # Addingitems to DDB table for blackholed routes
+                        ddbputblackhole = dynamodb.put_item(
+                            Item={
+                                'account': {
+                                    'S': account,
+                                },
+                                'transitGatewayId': {
+                                    'S': transitGatewayId,
+                                },
+                                'transitGatewayRouteTableId': {
+                                    'S': transitGatewayRouteTableId,
+                                },
+                                'destinationCidrBlock': {
+                                    'S': destinationCidrBlock,
+                                },
+                                'routeType': {
+                                    'S': routeType,
+                                },
+                                'routeState': {
+                                    'S': routeState,
+                                },
+                                'tgwAttachmentId': {
+                                    'S': tgwAttachmentId,
+                                },
+                                'resourceId': {
+                                    'S': resourceId,
+                                },
+                                'attachmentType': {
+                                    'S': attachmentType,
+                                },
                             },
-                            'transitGatewayId': {
-                                'S': transitGatewayId,
-                            },
-                            'transitGatewayRouteTableId': {
-                                'S': transitGatewayRouteTableId,
-                            },
-                            'destinationCidrBlock': {
-                                'S': destinationCidrBlock,
-                            },
-                            'routeType': {
-                                'S': routeType,
-                            },
-                            'routeState': {
-                                'S': routeState,
-                            },
-                            'tgwAttachmentId': {
-                                'S': tgwAttachmentId,
-                            },
-                            'resourceId': {
-                                'S': resourceId,
-                            },
-                            'attachmentType': {
-                                'S': attachmentType,
-                            },
-                        },
-                        ReturnConsumedCapacity='TOTAL',
-                        TableName=ddbtableout,
-                    )
-                    print (ddbputblackhole)
+                            ReturnConsumedCapacity='TOTAL',
+                            TableName=ddbtableout,
+                        )
+                        print (ddbputblackhole)
     # Extracting columns for DDB table for routes other than status of blackhole
-                else:
-                    destinationCidrBlock = record['destinationCidrBlock']
-                    print (destinationCidrBlock)
-                    attachmentType = record['transitGatewayAttachments'][0]['resourceType']
-                    print(attachmentType)
-                    resourceId = record['transitGatewayAttachments'][0]['resourceId']
-                    print (resourceId)
-                    routeState = record['state']
-                    print (routeState)
-                    routeType = record['type']
-                    print (routeType)
-                    tgwAttachmentId = record['transitGatewayAttachments'][0]['transitGatewayAttachmentId']
-                    print (tgwAttachmentId)
-                    remaining = ec2.describe_transit_gateway_attachments(
-                        TransitGatewayAttachmentIds = [tgwAttachmentId]
-                    )
-                    transitGatewayRouteTableId=response['TransitGatewayRouteTables'][i]['TransitGatewayRouteTableId']
-                    print (transitGatewayRouteTableId)
-                    account = remaining['TransitGatewayAttachments'][0]['TransitGatewayOwnerId']
-                    print (account)
-                    transitGatewayId = remaining['TransitGatewayAttachments'][0]['TransitGatewayId']
-                    print (transitGatewayId)
-                    protocol = ""
-    # Adding items to DDB table for routed other than blackholed routes
-                    ddbputnonblackholeout = dynamodb.put_item(
-                        Item={
-                            'account': {
-                                'S': account,
+                    else:
+                        destinationCidrBlock = record['destinationCidrBlock']
+                        print (destinationCidrBlock)
+                        attachmentType = record['transitGatewayAttachments'][0]['resourceType']
+                        print(attachmentType)
+                        resourceId = record['transitGatewayAttachments'][0]['resourceId']
+                        print (resourceId)
+                        routeState = record['state']
+                        print (routeState)
+                        routeType = record['type']
+                        print (routeType)
+                        tgwAttachmentId = record['transitGatewayAttachments'][0]['transitGatewayAttachmentId']
+                        print (tgwAttachmentId)
+                        remaining = ec2.describe_transit_gateway_attachments(
+                            TransitGatewayAttachmentIds = [tgwAttachmentId]
+                        )
+                        transitGatewayRouteTableId=response['TransitGatewayRouteTables'][i]['TransitGatewayRouteTableId']
+                        print (transitGatewayRouteTableId)
+                        account = remaining['TransitGatewayAttachments'][0]['TransitGatewayOwnerId']
+                        print (account)
+                        transitGatewayId = remaining['TransitGatewayAttachments'][0]['TransitGatewayId']
+                        print (transitGatewayId)
+                        protocol = ""
+    # Addingitems to DDB table for routed other than blackholed routes
+                        ddbputnonblackholeout = dynamodb.put_item(
+                            Item={
+                                'account': {
+                                    'S': account,
+                                },
+                                'transitGatewayId': {
+                                    'S': transitGatewayId,
+                                },
+                                'transitGatewayRouteTableId': {
+                                    'S': transitGatewayRouteTableId,
+                                },
+                                'destinationCidrBlock': {
+                                    'S': destinationCidrBlock,
+                                },
+                                'routeType': {
+                                    'S': routeType,
+                                },
+                                'routeState': {
+                                    'S': routeState,
+                                },
+                                'tgwAttachmentId': {
+                                    'S': tgwAttachmentId,
+                                },
+                                'resourceId': {
+                                    'S': resourceId,
+                                },
+                                'attachmentType': {
+                                    'S': attachmentType,
+                                },
                             },
-                            'transitGatewayId': {
-                                'S': transitGatewayId,
+                            ReturnConsumedCapacity='TOTAL',
+                            TableName=ddbtableout,
+                        )
+                        print (ddbputnonblackholeout)
+                        
+                        ddbputnonblackholein = dynamodb.put_item(
+                            Item={
+                                'account': {
+                                    'S': account,
+                                },
+                                'transitGatewayId': {
+                                    'S': transitGatewayId,
+                                },
+                                'destinationCidrBlock': {
+                                    'S': destinationCidrBlock,
+                                },
+                                'routeType': {
+                                    'S': routeType,
+                                },
+                                'routeState': {
+                                    'S': routeState,
+                                },
+                                'tgwAttachmentId': {
+                                    'S': tgwAttachmentId,
+                                },
+                                'resourceId': {
+                                    'S': resourceId,
+                                },
+                                'attachmentType': {
+                                    'S': attachmentType,
+                                },
                             },
-                            'transitGatewayRouteTableId': {
-                                'S': transitGatewayRouteTableId,
-                            },
-                            'destinationCidrBlock': {
-                                'S': destinationCidrBlock,
-                            },
-                            'routeType': {
-                                'S': routeType,
-                            },
-                            'routeState': {
-                                'S': routeState,
-                            },
-                            'tgwAttachmentId': {
-                                'S': tgwAttachmentId,
-                            },
-                            'resourceId': {
-                                'S': resourceId,
-                            },
-                            'attachmentType': {
-                                'S': attachmentType,
-                            },
-                        },
-                        ReturnConsumedCapacity='TOTAL',
-                        TableName=ddbtableout,
-                    )
-                    print (ddbputnonblackholeout)
-                    
-                    ddbputnonblackholein = dynamodb.put_item(
-                        Item={
-                            'account': {
-                                'S': account,
-                            },
-                            'transitGatewayId': {
-                                'S': transitGatewayId,
-                            },
-                            'destinationCidrBlock': {
-                                'S': destinationCidrBlock,
-                            },
-                            'routeType': {
-                                'S': routeType,
-                            },
-                            'routeState': {
-                                'S': routeState,
-                            },
-                            'tgwAttachmentId': {
-                                'S': tgwAttachmentId,
-                            },
-                            'resourceId': {
-                                'S': resourceId,
-                            },
-                            'attachmentType': {
-                                'S': attachmentType,
-                            },
-                        },
-                        ReturnConsumedCapacity='TOTAL',
-                        TableName=ddbtablein,
-                    )
-                    print (ddbputnonblackhole)
+                            ReturnConsumedCapacity='TOTAL',
+                            TableName=ddbtablein,
+                        )
+                        print (ddbputnonblackholein)
 
     
