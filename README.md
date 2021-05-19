@@ -8,7 +8,7 @@ As the number of attachments increases over time, monitoring these quotas from w
 
 <strong>Solution architecture:</strong>
 
-<strong><img class="aligncenter size-full wp-image-7401" src="https://d2908q01vomqb2.cloudfront.net/5b384ce32d8cdef02bc3a139d4cac0a22bb029e8/2021/05/19/TGWRouteMonitoring.jpg" alt="" width="1091" height="831" /></strong>
+![](/TGWRouteMonitoring.jpg)
 
 <strong>Solution overview:</strong>
 
