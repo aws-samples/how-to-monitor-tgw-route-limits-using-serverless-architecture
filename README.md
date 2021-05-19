@@ -59,7 +59,7 @@ For this walkthrough, you should have the following:
  	<li>Create an Amazon S3 bucket in the Region where the Transit Gateway you are planning to monitor is present. For example, this snippet created the bucket in us-east-1<code></code>
 <pre><code class="lang-bash">•	aws s3api create-bucket --bucket <span style="color: #ff0000;">&lt;bucket-name&gt;</span> --Region us-east-1 </code></pre>
 </li>
- 	<li>Download and unzip the file containing the CloudFormation template and Lambda function code from <a href="https://amazon.awsapps.com/workdocs/index.html#/document/cc362d3dda73f1698f312e94536abb19a1ab90c64c6cf95059742b79817948a0">here</a>. This can also be done by running the command that follows to a directory in your local workstation. You must run all of the subsequent commands from this directory.
+ 	<li>Download and unzip the file containing the CloudFormation template and Lambda function code from <a href="https://github.com/aws-samples/how-to-monitor-tgw-route-limits-using-serverless-architecture/archive/refs/heads/main.zip">here</a>. This can also be done by running the command that follows to a directory in your local workstation. You must run all of the subsequent commands from this directory.
 <pre><code class="lang-bash">$ wget https://github.com/aws-samples/how-to-monitor-tgw-route-limits-using-serverless-architecture/archive/refs/heads/main.zip
 $ unzip main.zip
 $ cd how-to-monitor-tgw-route-limits-using-serverless-architecture</code></pre>
