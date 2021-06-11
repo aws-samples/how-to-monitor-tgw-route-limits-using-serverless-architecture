@@ -1,10 +1,8 @@
-# **How to Monitor AWS Transit Gateway Route Limits using Serverless Architecture**
-
-  <a href="https://aws.amazon.com/transit-gateway/">AWS Transit Gateway</a> simplifies your network and puts an end to complex peering relationships. It acts as a cloud router and scales elastically based on the volume of network traffic. It can centralize connections (known as attachments) from your on-premises networks, and attach to <a href="https://docs.aws.amazon.com/vpc/latest/tgw/tgw-vpc-attachments.html">Amazon Virtual Private Clouds (VPC)</a> <a href="https://docs.aws.amazon.com/vpc/latest/tgw/tgw-vpn-attachments.html">Virtual Private Networks (VPN)</a>, <a href="https://docs.aws.amazon.com/vpc/latest/tgw/tgw-dcg-attachments.html">AWS Direct Connect Gateways</a>, <a href="https://docs.aws.amazon.com/vpc/latest/tgw/tgw-peering.html">Transit Gateways from other Regions</a>, and <a href="https://docs.aws.amazon.com/vpc/latest/tgw/tgw-connect.html">Transit Gateway Connect peers</a>.
+<a href="https://aws.amazon.com/transit-gateway/">AWS Transit Gateway</a> simplifies your network and puts an end to complex peering relationships. It acts as a cloud router and scales elastically based on the volume of network traffic. It can centralize connections (known as attachments) from your on-premises networks, and attach to <a href="https://docs.aws.amazon.com/vpc/latest/tgw/tgw-vpc-attachments.html">Amazon Virtual Private Clouds (VPC)</a> <a href="https://docs.aws.amazon.com/vpc/latest/tgw/tgw-vpn-attachments.html">Virtual Private Networks (VPN)</a>, <a href="https://docs.aws.amazon.com/vpc/latest/tgw/tgw-dcg-attachments.html">AWS Direct Connect Gateways</a>, <a href="https://docs.aws.amazon.com/vpc/latest/tgw/tgw-peering.html">Transit Gateways from other Regions</a>, and <a href="https://docs.aws.amazon.com/vpc/latest/tgw/tgw-connect.html">Transit Gateway Connect peers</a>.
 
 Among these various attachments, VPN, AWS Direct Connect Gateway and Transit Gateway Connect peers have quotas on the number of prefixes that are advertised, both to and from Transit Gateway. Along with attachment-specific quotas, each Transit Gateway has a quota on the total number of routes. These attachment quotas, along with VPC and Transit Gateway peer attachments routes, contribute towards the overall quota. You can learn more about the quotas by referring to the <a href="https://docs.aws.amazon.com/vpc/latest/tgw/transit-gateway-quotas.html">Transit Gateway quotas</a> section of our documentation.
 
-As the number of attachments increases over time, monitoring these quotas from within the AWS Management Console or the Command Line Interface (CLI) becomes complex.  In this blog, we walk through a serverless solution to monitor Transit Gateway attachments and send alerts on the corresponding route limits. This solution uses <a href="https://aws.amazon.com/cloudwatch/">Amazon CloudWatch</a>, <a href="https://aws.amazon.com/transit-gateway/network-manager/">Transit Gateway Network Manager</a>, <a href="https://aws.amazon.com/lambda/">AWS Lambda</a> and <a href="https://aws.amazon.com/dynamodb/">Amazon DynamoDB</a>.
+As the number of attachments increases over time, monitoring these quotas from within the AWS Management Console or the Command Line Interface (CLI) becomes complex.  In this blog, we walk you through a serverless solution to monitor Transit Gateway attachments and send alerts on the corresponding route limits. This solution uses <a href="https://aws.amazon.com/cloudwatch/">Amazon CloudWatch</a>, <a href="https://aws.amazon.com/transit-gateway/network-manager/">Transit Gateway Network Manager</a>, <a href="https://aws.amazon.com/lambda/">AWS Lambda</a> and <a href="https://aws.amazon.com/dynamodb/">Amazon DynamoDB</a>.
 
 <strong>Solution architecture:</strong>
 
@@ -14,7 +12,7 @@ As the number of attachments increases over time, monitoring these quotas from w
 
 When deployed, this solution captures the current state of the Transit Gateways in your account within a given Region. This initial state is captured by triggering an AWS Lambda function, and the state information is written to a DynamoDB table. Next, the solution listens for routing update events sent by <a href="https://aws.amazon.com/transit-gateway/network-manager">Transit Gateway Network Manager</a> to CloudWatch Logs. Any such events invokes another Lambda function to update the DynamoDB table.
 
-The solution also deploys a Lambda function, which runs every minute, to scan the DynamoDB table and calculate the number of prefixes advertised to and from each attachment. It does this for every Transit Gateway in your account in a given Region. As this information is processed, the Lambda function pushes the metrics to CloudWatch using the custom metric push API.
+The solution also deploys a Lambda function, which runs every minute, to scan the DynamoDB table and calculates the number of prefixes advertised to and from each attachment. It does this for every Transit Gateway in your account in a given Region. As this information is processed, the Lambda function pushes the metrics to CloudWatch using the custom metric push API.
 
 You use these metrics to create CloudWatch dashboards and alerts based on the limits for each attachment type by following the instructions for <a href="https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ConsoleAlarms.html">Creating a CloudWatch alarm based on a static threshold</a> in our documentation.
 
@@ -38,7 +36,7 @@ For this walkthrough, you should have the following:
 <ul>
  	<li>Amazon S3 full access to allow create, delete buckets and upload objects. <a href="https://console.aws.amazon.com/iam/home#policies/arn:aws:iam::aws:policy/AmazonS3FullAccess">Here</a> is an example policy that you can tweak to your needs.</li>
  	<li>CloudFormation full access to allow create, delete, and describe stacks. <a href="https://console.aws.amazon.com/iam/home#policies/arn:aws:iam::aws:policy/AWSCloudFormationFullAccess">Here</a> is an example policy that you can tweak to your needs.</li>
- 	<li>Lambda full access to create, delete, update, and run Lambda functions. <a href="policy/AWSLambda_FullAccess">Here</a> is an example policy that you can tweak to your needs.</li>
+ 	<li>Lambda full access to create, delete, update, and run Lambda functions. <a href="https://console.aws.amazon.com/iam/home?#/policies/arn:aws:iam::aws:policy/AWSLambda_FullAccess">Here</a> is an example policy that you can tweak to your needs.</li>
 </ul>
 </li>
  	<li>Transit Gateway Network Manager is a global service and uses CloudWatch in the us-west-2 Region for event processing. Therefore, this solution must be deployed in us-west-2. However, the solution can monitor Transit Gateways in any Region.
@@ -46,7 +44,7 @@ For this walkthrough, you should have the following:
  	<li>Make sure that you deploy the solution in the us-west-2 Region and your AWS CLI default Region is us-west-2. If us-west-2 is not the default Region, reference the Region explicitly while running AWS CLI commands using --region us-west-2 switch.</li>
 </ul>
 </li>
- 	<li>Amazon S3 bucket in the us-west-2 Region for staging Lambda deploy packages.</li>
+ 	<li>Amazon S3 bucket in the us-west-2 Region for staging Lambda deployment packages.</li>
  	<li>Amazon S3 buckets in every Region where you must monitor the route limits of Transit Gateways.</li>
  	<li>One or more Transit Gateways with attachments and route tables configured.</li>
  	<li>Transit Gateway Network Manager should be configured to monitor all Transit Gateways in your account.</li>
@@ -89,7 +87,7 @@ $ aws s3 cp put_metric_lambda_function.py.zip s3://<span style="color: #ff0000;"
 --capabilities CAPABILITY_IAM \
 --Region us-west-2
 </code></pre>
-<p style="padding-left: 40px;">This stack includes resources that affect permissions in your AWS account by creating necessary IAM roles. You must explicitly acknowledge this by specifying CAPABILITY_IAM or CAPABILITY_NAMED_IAM value for the –capabilities parameter.</p>
+<p style="padding-left: 40px;">This stack includes resources that affect permissions in your AWS account by creating necessary IAM roles. You must explicitly acknowledge this by specifying CAPABILITY_IAM or CAPABILITY_NAMED_IAM value for the --capabilities parameter.</p>
 Stack creation will take you approximately 5–7 minutes. Check the status of the stack by running the command that follows every few minutes. You should see StackStatus value as CREATE_COMPLETE when done.
 
 Example:
@@ -151,7 +149,7 @@ You use these metrics to create dashboards and alerts based on the quotas for ea
 
 <strong>Cost of the solution:</strong>
 
-Cost will depend on how many route update events are generated in your network and processed, stored by the solution. More information on pricing can be found on public pricing pages for each of the services:
+Cost will depend on how many route update events are generated in your network and processed, and stored by the solution. More information on pricing can be found on public pricing pages for each of the services:
 <ul>
  	<li><a href="https://aws.amazon.com/dynamodb/pricing/">Amazon DynamoDB pricing</a></li>
  	<li><a href="https://aws.amazon.com/lambda/pricing/">AWS Lambda pricing</a></li>
@@ -167,3 +165,17 @@ To ensure that no charges are incurred, be sure to empty and delete the Amazon S
 In this blog post, we demonstrated how to monitor the number of routes to each Transit Gateway by deploying a serverless solution and using CloudWatch. You can use these metrics to create alarms in CloudWatch to get notified when the number of routes are approaching its attachment limit and take action to keep the routes within limits.
 
 &nbsp;
+<div class="blog-author-box" style="border: 1px solid #d5dbdb; padding: 15px;">
+<p class="AnanthB.jpg"><img class="alignleft size-full wp-image-5363" src="https://d2908q01vomqb2.cloudfront.net/5b384ce32d8cdef02bc3a139d4cac0a22bb029e8/2021/05/20/AnanthB.png" alt="AnanthB.jpg" width="125" height="125" /></p>
+
+<h3 class="lb-h4">Ananth Balasubramanyam</h3>
+<p style="color: #879196; font-size: 1rem;">Ananth Balasubramanyam is a Sr. Solutions Architect based out of London,UK and has extensively worked with Start-ups. He has experience spanning Education, Financial, CRM and Insurance domains. He loves and gets excited building awesome, cool stuff and has been experimenting with AI/ML and Robotics. His interest areas are SaaS, Big Data and AI/ML. When not working on anything AWS related, he loves the outdoors and taking his bike out.</p>
+
+</div>
+<div class="blog-author-box" style="border: 1px solid #d5dbdb; padding: 15px;">
+<p class="VijayM.jpg"><img class="alignleft size-full wp-image-5363" src="https://d2908q01vomqb2.cloudfront.net/5b384ce32d8cdef02bc3a139d4cac0a22bb029e8/2021/05/20/VijayM.jpg" alt="VijayM.jpg" width="125" height="125" /></p>
+
+<h3 class="lb-h4">Vijay Menon</h3>
+<p style="color: #879196; font-size: 1rem;">Vijay Menon is a Principal Solutions Architect based out of Bangalore, India with a background in large scale networks and communications infrastructure. He enjoys learning new technologies and helping customers solve complex technical problems by providing solutions using AWS products and services. When he is not helping customers, he likes to go on long runs and spend time with family and friends.</p>
+
+</div>
