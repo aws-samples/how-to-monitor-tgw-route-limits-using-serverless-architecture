@@ -14,7 +14,7 @@ Parameters:
     Type: String
 
   S3BucketForTGWRouteExports:
-    Default: 214517638895-waf-logs-fake-bots-us-east-1
+    Default: 12345678901-us-east-1
     Description: S3 Bucket name to store exported routes from the TGW in the same region as the TGW
     Type: String
     
