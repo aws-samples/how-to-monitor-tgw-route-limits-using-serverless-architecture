@@ -4,7 +4,7 @@ Description: 'This template the serverless components'
 
 Parameters: 
   S3BucketWithDeploymentPackage: 
-    Default: vijaym-tgw-route-monitoring-deployment
+    Default: 12345678901-tgw-route-monitoring-deployment
     Description: S3 Bucket name with deployment package in it
     Type: String
 
