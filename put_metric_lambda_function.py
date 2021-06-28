@@ -25,14 +25,22 @@ def lambda_handler(event, context):
 #Iterate through the response of describe-transit-gateway-attachments api call calculate in and out prefic count for each attachment
     for i in range (len(response['TransitGatewayAttachments'])):
 #        print (response['TransitGatewayAttachments'][i]['ResourceType']+", "+response['TransitGatewayAttachments'][i]['TransitGatewayAttachmentId']+", "+response['TransitGatewayAttachments'][i]['Association']['TransitGatewayRouteTableId'])
-        TransitGatewayAttachmentId = response['TransitGatewayAttachments'][i]['TransitGatewayAttachmentId']
-        TransitGatewayRouteTableId = response['TransitGatewayAttachments'][i]['Association']['TransitGatewayRouteTableId']
-        ResourceType = response['TransitGatewayAttachments'][i]['ResourceType']
-        ResourceId = response['TransitGatewayAttachments'][i]['ResourceId']
+        process_attachment(response['TransitGatewayAttachments'][i])
+
+
+def process_attachment(attachment):
+    try:
+        TransitGatewayAttachmentId = attachment['TransitGatewayAttachmentId']
+
+        # Note: it's possible that an attachment does not have 'Association'
+        TransitGatewayRouteTableId = attachment.get('Association', {}).get('TransitGatewayRouteTableId')
+
+        ResourceType = attachment['ResourceType']
+        ResourceId = attachment['ResourceId']
         DimensionName = ResourceType+"-"+ResourceId
         DimensionNameIn = DimensionName+"-IN"
         DimensionNameOut = DimensionName+"-Out"
-        TransitGatewayId = response['TransitGatewayAttachments'][i]['TransitGatewayId']
+        TransitGatewayId = attachment['TransitGatewayId']
         TGWTotal = TransitGatewayId+"-Total"
 # Scan the DDB table to count routes advertised by the attachment to the TGW
         In = dynamodb.scan(
@@ -61,29 +69,30 @@ def lambda_handler(event, context):
         )
 #        print (putMetricIn)
 # Scan the DDB table to count routes propagated to the attachment by TGW
-        Out = dynamodb.scan(
-            TableName=ddbtableout,
-            FilterExpression = "#14260 = :14260 And #14261 <> :14261 And #14262 = :14262",
-            ExpressionAttributeNames = {"#14260":"transitGatewayRouteTableId","#14261":"tgwAttachmentId","#14262":"routeState"},
-            ExpressionAttributeValues = {":14260": {"S":TransitGatewayRouteTableId},":14261": {"S":TransitGatewayAttachmentId},":14262": {"S":"active"}}
-        )
+        if TransitGatewayRouteTableId is not None:
+            Out = dynamodb.scan(
+                TableName=ddbtableout,
+                FilterExpression = "#14260 = :14260 And #14261 <> :14261 And #14262 = :14262",
+                ExpressionAttributeNames = {"#14260":"transitGatewayRouteTableId","#14261":"tgwAttachmentId","#14262":"routeState"},
+                ExpressionAttributeValues = {":14260": {"S":TransitGatewayRouteTableId},":14261": {"S":TransitGatewayAttachmentId},":14262": {"S":"active"}}
+            )
 #        print (Out['Count'])
 # Push the outgoing route counts to CloudWatch custom metric
-        putMetricOut = cloudwatch.put_metric_data(
-            MetricData = [
-                {
-                    'MetricName': 'Routes',
-                    'Dimensions': [
-                        {
-                            'Name': DimensionName,
-                            'Value': DimensionNameOut
+            putMetricOut = cloudwatch.put_metric_data(
+                MetricData = [
+                    {
+                        'MetricName': 'Routes',
+                        'Dimensions': [
+                            {
+                                'Name': DimensionName,
+                                'Value': DimensionNameOut
+                            },
+                        ],
+                        'Unit': 'Count',
+                        'Value': (Out['Count'])
                     },
-                 ],
-                    'Unit': 'Count',
-                    'Value': (Out['Count'])
-            },
-            ],
-            Namespace = namespace
+                ],
+                Namespace = namespace
             )
 #        print(putMetricOut)
 # Scan the DDB table to count total routes in TGW
@@ -93,7 +102,7 @@ def lambda_handler(event, context):
             ExpressionAttributeNames = {"#fb3f0":"transitGatewayId"},
             ExpressionAttributeValues = {":fb3f0": {"S":TransitGatewayId}}
         )
-# Push the total route counts to CloudWatch custom metric    
+# Push the total route counts to CloudWatch custom metric
         putMetricTotal = cloudwatch.put_metric_data(
             MetricData=[
             {
@@ -112,4 +121,8 @@ def lambda_handler(event, context):
             )
 #        print(putMetricTotal)
 #        print (Total['Count'])
-    
+
+    except Exception as e:
+        print("Failed to process an attachment")
+        import traceback
+        traceback.print_exc()
