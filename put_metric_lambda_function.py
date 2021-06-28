@@ -86,8 +86,8 @@ def process_attachment(attachment):
                             {
                                 'Name': DimensionName,
                                 'Value': DimensionNameOut
-                        },
-                    ],
+                            },
+                        ],
                         'Unit': 'Count',
                         'Value': (Out['Count'])
                     },
